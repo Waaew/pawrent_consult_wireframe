@@ -6,17 +6,20 @@ import '../theme/app_theme.dart';
 import '../widgets/avatar.dart';
 import 'followers_list_screen.dart';
 import 'pet_detail_screen.dart';
+import 'private_consult_session_screen.dart';
 import 'question_chat_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final Author author;
   final bool showBackButton;
   final VoidCallback? onLogout;
+  final ValueChanged<Author>? onSwitchAccount;
   const ProfileScreen({
     super.key,
     required this.author,
     this.showBackButton = true,
     this.onLogout,
+    this.onSwitchAccount,
   });
 
   @override
@@ -33,6 +36,174 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   bool get _isMe => _author.avatarSeed == currentUser.avatarSeed;
+
+  Future<void> _openAccountSwitcher() async {
+    final personas = <Author>[
+      ownerWaew,
+      vetSomchai,
+      vetPloy,
+      vetMana,
+      brandRoyalCanin,
+    ];
+    final picked = await showModalBottomSheet<Author>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Text(
+                'สลับ Account (Demo)',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'ดูมุมมองของ persona แต่ละแบบ · ข้อมูลใช้ร่วมกัน',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ...personas.map((p) {
+                final active = p.avatarSeed == _author.avatarSeed;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      onTap: active
+                          ? null
+                          : () => Navigator.of(context).pop(p),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.primarySoft
+                              : AppColors.surface,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: active
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            SeededAvatar(
+                              seed: p.avatarSeed,
+                              size: 40,
+                              role: p.role,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          p.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      if (p.verified) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.verified,
+                                          size: 14,
+                                          color: _roleColor(p.role),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${_roleLabel(p.role)}${p.specialty != null ? ' · ${p.specialty}' : ''}${p.clinic != null ? ' · ${p.clinic}' : ''}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (active)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.pill),
+                                ),
+                                child: const Text(
+                                  'ACTIVE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              )
+                            else
+                              const Icon(Icons.chevron_right,
+                                  color: AppColors.textSecondary),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null) {
+      widget.onSwitchAccount?.call(picked);
+    }
+  }
 
   Future<void> _openEdit() async {
     final updated = await showModalBottomSheet<Author>(
@@ -63,6 +234,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         automaticallyImplyLeading: widget.showBackButton,
         title: const Text('Profile'),
         actions: [
+          if (_isMe && widget.onSwitchAccount != null)
+            IconButton(
+              tooltip: 'สลับ Account (Demo)',
+              onPressed: _openAccountSwitcher,
+              icon: const Icon(Icons.swap_horiz),
+            ),
           IconButton(
             tooltip: 'Share profile',
             onPressed: () {},
@@ -145,6 +322,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _SectionLabel('My pets'),
             const SizedBox(height: AppSpacing.sm),
             _PetStrip(pets: currentUserPets),
+            const SizedBox(height: AppSpacing.lg),
+            _SectionLabel('Activity · ${myActivities.length}'),
+            const SizedBox(height: AppSpacing.sm),
+            if (myActivities.isEmpty)
+              const _EmptyTile(text: 'ยังไม่มี activity จาก CTA ในแชท')
+            else
+              ...myActivities.take(8).map((e) => _ActivityTile(entry: e)),
             const SizedBox(height: AppSpacing.lg),
           ],
           _SectionLabel(_isMe ? 'Your recent questions' : 'Recent questions'),
@@ -300,6 +484,46 @@ class _Header extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
+            )
+          else if (author.role == AuthorRole.vet)
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PrivateConsultSessionScreen(
+                          expert: author,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.lock_outline, size: 16),
+                    label: const Text(
+                      'ขอ Private Consult · ฿500 / 30 นาที',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.notifications_active_outlined,
+                        size: 16),
+                    label: const Text('Follow'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
             )
           else
             Row(
@@ -561,6 +785,12 @@ class _VetCredentialCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          _CeoScoreRow(author: author),
+          const SizedBox(height: 10),
+          _SpecialtyTagsRow(author: author),
+          const SizedBox(height: 10),
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 10),
           _CredentialRow(
             icon: Icons.local_hospital_outlined,
             label: 'Clinic',
@@ -572,6 +802,8 @@ class _VetCredentialCard extends StatelessWidget {
             label: 'Specialty',
             value: author.specialty ?? '—',
           ),
+          const SizedBox(height: 8),
+          _SpeciesTreatedRow(species: author.treatsSpecies),
           const SizedBox(height: 8),
           _CredentialRow(
             icon: Icons.schedule_outlined,
@@ -586,6 +818,216 @@ class _VetCredentialCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CeoScoreRow extends StatelessWidget {
+  final Author author;
+  const _CeoScoreRow({required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryTag = author.specialty ?? 'General';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.08),
+            AppColors.accent.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.auto_awesome,
+                color: Colors.white, size: 15),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'CEO Score · Consult Engine Optimization',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Top 5% · $primaryTag',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: const Text(
+              '94',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpecialtyTagsRow extends StatelessWidget {
+  final Author author;
+  const _SpecialtyTagsRow({required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    // Mock AI-generated tags based on author seed — in production comes from CEO.
+    final tagSets = <String, List<String>>{
+      'somchai': ['อ้วก/ท้องเสีย', 'โรคทางเดินอาหาร', 'ฉุกเฉิน'],
+      'ploy': ['ผิวหนัง', 'โรคภูมิแพ้', 'ขนร่วง'],
+      'mana': ['โภชนาการ', 'ลูกสุนัข', 'อาหารเสริม'],
+    };
+    final tags = tagSets[author.avatarSeed] ??
+        const ['ทั่วไป', 'ตรวจสุขภาพ'];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.sell_outlined,
+            size: 14, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 82,
+          child: Text(
+            'AI tags',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: tags
+                .map((t) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                      child: Text(
+                        t,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeciesTreatedRow extends StatelessWidget {
+  final List<String> species;
+  const _SpeciesTreatedRow({required this.species});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.pets, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 90,
+          child: Text(
+            'สายพันธุ์ที่รักษา',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: species.isEmpty
+              ? const Text(
+                  '—',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              : Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: species
+                      .map((s) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_speciesEmoji(s),
+                                    style: const TextStyle(fontSize: 12)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  s,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                ),
+        ),
+      ],
     );
   }
 }
@@ -938,6 +1380,123 @@ class _AnswerTile extends StatelessWidget {
   }
 }
 
+class _ActivityTile extends StatelessWidget {
+  final ActivityEntry entry;
+  const _ActivityTile({required this.entry});
+
+  String _relative(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 1) return 'เมื่อสักครู่';
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    if (d.inDays < 7) return '${d.inDays}d ago';
+    return DateFormat('d MMM').format(t);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: entry.type.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(entry.type.icon,
+                  size: 17, color: entry.type.color),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: entry.type.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          entry.type.label.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: entry.type.color,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _relative(entry.at),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    entry.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    entry.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (entry.amount != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                entry.amount!,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: entry.type.color,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyTile extends StatelessWidget {
   final String text;
   const _EmptyTile({required this.text});
@@ -1027,6 +1586,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _bioCtrl;
   late final TextEditingController _clinicCtrl;
   late final TextEditingController _specialtyCtrl;
+  late final Set<String> _species;
 
   @override
   void initState() {
@@ -1034,7 +1594,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     _nameCtrl = TextEditingController(text: widget.author.name);
     _bioCtrl = TextEditingController(text: widget.author.bio ?? '');
     _clinicCtrl = TextEditingController(text: widget.author.clinic ?? '');
-    _specialtyCtrl = TextEditingController(text: widget.author.specialty ?? '');
+    _specialtyCtrl =
+        TextEditingController(text: widget.author.specialty ?? '');
+    _species = {...widget.author.treatsSpecies};
   }
 
   @override
@@ -1053,7 +1615,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       name: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
       clinic: _clinicCtrl.text.trim().isEmpty ? null : _clinicCtrl.text.trim(),
-      specialty: _specialtyCtrl.text.trim().isEmpty ? null : _specialtyCtrl.text.trim(),
+      specialty: _specialtyCtrl.text.trim().isEmpty
+          ? null
+          : _specialtyCtrl.text.trim(),
+      treatsSpecies: _species.toList(),
     );
     Navigator.of(context).pop(updated);
   }
@@ -1126,14 +1691,140 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: _clinicCtrl,
-                  decoration: const InputDecoration(hintText: 'Clinic / hospital'),
+                  decoration:
+                      const InputDecoration(hintText: 'Clinic / hospital'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const _FormLabel('Specialty'),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _specialtyCtrl,
-                  decoration: const InputDecoration(hintText: 'e.g. Internal Medicine'),
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'เลือก preset หรือพิมพ์เพิ่มเอง',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: vetSpecialtyPresets.map((p) {
+                    final active =
+                        _specialtyCtrl.text.trim().toLowerCase() ==
+                            p.toLowerCase();
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        onTap: () => setState(() {
+                          _specialtyCtrl.text = p;
+                          _specialtyCtrl.selection = TextSelection.collapsed(
+                              offset: p.length);
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.primary
+                                : AppColors.surface,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.pill),
+                            border: Border.all(
+                              color: active
+                                  ? AppColors.primary
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Text(
+                            p,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: active
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    const _FormLabel('สายพันธุ์ที่รักษา'),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${_species.length} เลือก',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: speciesMasterData.map((s) {
+                    final selected = _species.contains(s);
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        onTap: () => setState(() {
+                          if (selected) {
+                            _species.remove(s);
+                          } else {
+                            _species.add(s);
+                          }
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.surface,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.pill),
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_speciesEmoji(s),
+                                  style: const TextStyle(fontSize: 13)),
+                              const SizedBox(width: 5),
+                              Text(
+                                s,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: selected
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                              if (selected) ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.check,
+                                    size: 13, color: Colors.white),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
               const SizedBox(height: AppSpacing.lg),
@@ -1165,6 +1856,25 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         ),
       ),
     );
+  }
+}
+
+String _speciesEmoji(String s) {
+  switch (s) {
+    case 'Dog':
+      return '🐶';
+    case 'Cat':
+      return '🐱';
+    case 'Rabbit':
+      return '🐰';
+    case 'Bird':
+      return '🦜';
+    case 'Fish':
+      return '🐠';
+    case 'Reptile':
+      return '🦎';
+    default:
+      return '🐾';
   }
 }
 

@@ -1,9 +1,35 @@
 import '../models/consult_models.dart';
 
 final myPets = <Pet>[
-  const Pet(name: 'Moji', breed: 'Shiba Inu', species: 'Dog', ageMonths: 28, avatarSeed: 'moji'),
-  const Pet(name: 'Luna', breed: 'British Shorthair', species: 'Cat', ageMonths: 14, avatarSeed: 'luna'),
-  const Pet(name: 'Coco', breed: 'Holland Lop', species: 'Rabbit', ageMonths: 9, avatarSeed: 'coco'),
+  const Pet(
+    name: 'Moji',
+    breed: 'Shiba Inu',
+    species: 'Dog',
+    ageMonths: 28,
+    weightKg: 12.4,
+    sex: 'male',
+    neutered: true,
+    avatarSeed: 'moji',
+  ),
+  const Pet(
+    name: 'Luna',
+    breed: 'British Shorthair',
+    species: 'Cat',
+    ageMonths: 14,
+    weightKg: 4.2,
+    sex: 'female',
+    neutered: true,
+    avatarSeed: 'luna',
+  ),
+  const Pet(
+    name: 'Coco',
+    breed: 'Holland Lop',
+    species: 'Rabbit',
+    ageMonths: 9,
+    weightKg: 1.8,
+    sex: 'female',
+    avatarSeed: 'coco',
+  ),
 ];
 
 final ownerWaew = const Author(
@@ -28,6 +54,7 @@ final vetSomchai = const Author(
   avatarSeed: 'somchai',
   role: AuthorRole.vet,
   specialty: 'Internal Medicine',
+  treatsSpecies: ['Dog', 'Cat'],
   verified: true,
 );
 final vetPloy = const Author(
@@ -36,6 +63,7 @@ final vetPloy = const Author(
   avatarSeed: 'ploy',
   role: AuthorRole.vet,
   specialty: 'Dermatology',
+  treatsSpecies: ['Dog', 'Cat', 'Rabbit'],
   verified: true,
 );
 final vetMana = const Author(
@@ -44,6 +72,7 @@ final vetMana = const Author(
   avatarSeed: 'mana',
   role: AuthorRole.vet,
   specialty: 'Nutrition',
+  treatsSpecies: ['Dog', 'Cat', 'Bird', 'Reptile'],
   verified: true,
 );
 
@@ -182,6 +211,29 @@ final mockQuestions = <Question>[
     ],
   ),
 ];
+
+final List<ActivityEntry> myActivities = <ActivityEntry>[
+  ActivityEntry(
+    type: ActivityType.privateConsult,
+    title: 'Private Consult · Dr. Somchai R.',
+    subtitle: '30 นาที · สำเร็จ',
+    amount: '฿500',
+    relatedAvatarSeed: 'somchai',
+    at: DateTime.now().subtract(const Duration(days: 5)),
+  ),
+  ActivityEntry(
+    type: ActivityType.shopPurchased,
+    title: 'Royal Canin Maxi Puppy 3 kg',
+    subtitle: 'จำนวน 2 · จัดส่งแล้ว',
+    amount: '฿2,580',
+    relatedAvatarSeed: 'royalcanin',
+    at: DateTime.now().subtract(const Duration(days: 12)),
+  ),
+];
+
+void logActivity(ActivityEntry entry) {
+  myActivities.insert(0, entry);
+}
 
 Author currentUser = ownerWaew;
 List<Pet> get currentUserPets => myPets;

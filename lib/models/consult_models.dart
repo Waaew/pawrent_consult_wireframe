@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+/// Category accent colors pulled from the brand palette (primary/accent/vetBadge
+/// family) so tags read as muted brand variants — not candy-shop rainbow.
+/// Semantic red stays only for true emergency.
 enum ConsultCategory {
-  health('Health', '🩺', Color(0xFFEF4444)),
-  nutrition('Nutrition', '🥗', Color(0xFF22C55E)),
-  behavior('Behavior', '🐾', Color(0xFF6C4AB6)),
-  grooming('Grooming', '✂️', Color(0xFF06B6D4)),
-  emergency('Emergency', '🚨', Color(0xFFDC2626)),
-  other('Other', '💬', Color(0xFF6B7280));
+  health('Health', '🩺', Color(0xFF6C4AB6)),        // primary purple
+  nutrition('Nutrition', '🥗', Color(0xFF34C9B7)),  // accent teal
+  behavior('Behavior', '🐾', Color(0xFF2563EB)),    // vetBadge blue
+  grooming('Grooming', '✂️', Color(0xFF2BA99B)),   // muted accent
+  emergency('Emergency', '🚨', Color(0xFFEF4444)),  // danger (reserved)
+  other('Other', '💬', Color(0xFF6B6480));          // textSecondary
 
   final String label;
   final String emoji;
@@ -22,6 +25,7 @@ class Author {
   final String avatarSeed;
   final AuthorRole role;
   final String? specialty;
+  final List<String> treatsSpecies;
   final bool verified;
   final String? bio;
 
@@ -31,6 +35,7 @@ class Author {
     required this.avatarSeed,
     required this.role,
     this.specialty,
+    this.treatsSpecies = const [],
     this.verified = false,
     this.bio,
   });
@@ -41,6 +46,7 @@ class Author {
     String? avatarSeed,
     AuthorRole? role,
     String? specialty,
+    List<String>? treatsSpecies,
     bool? verified,
     String? bio,
   }) {
@@ -50,17 +56,36 @@ class Author {
       avatarSeed: avatarSeed ?? this.avatarSeed,
       role: role ?? this.role,
       specialty: specialty ?? this.specialty,
+      treatsSpecies: treatsSpecies ?? this.treatsSpecies,
       verified: verified ?? this.verified,
       bio: bio ?? this.bio,
     );
   }
 }
 
+/// Common vet specialty presets for quick-pick. Free-text still allowed.
+const vetSpecialtyPresets = <String>[
+  'Internal Medicine',
+  'Dermatology',
+  'Nutrition',
+  'Surgery',
+  'Dentistry',
+  'Ophthalmology',
+  'Cardiology',
+  'Orthopedics',
+  'Behavior',
+  'Emergency',
+  'Exotic Animals',
+];
+
 class Pet {
   final String name;
   final String breed;
   final String species;
   final int ageMonths;
+  final double? weightKg;
+  final String? sex; // 'male' / 'female' / 'unknown'
+  final bool neutered;
   final String avatarSeed;
 
   const Pet({
@@ -68,6 +93,9 @@ class Pet {
     required this.breed,
     required this.species,
     required this.ageMonths,
+    this.weightKg,
+    this.sex,
+    this.neutered = false,
     required this.avatarSeed,
   });
 }
@@ -123,6 +151,61 @@ class HealthLogEntry {
     required this.title,
     this.note,
     required this.loggedAt,
+  });
+}
+
+enum ActivityType { telemetBooked, shopPurchased, privateConsult }
+
+extension ActivityTypeX on ActivityType {
+  String get label {
+    switch (this) {
+      case ActivityType.telemetBooked:
+        return 'Telemet';
+      case ActivityType.shopPurchased:
+        return 'Shop';
+      case ActivityType.privateConsult:
+        return 'Private Consult';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case ActivityType.telemetBooked:
+        return Icons.videocam_outlined;
+      case ActivityType.shopPurchased:
+        return Icons.shopping_bag_outlined;
+      case ActivityType.privateConsult:
+        return Icons.lock_outline;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case ActivityType.telemetBooked:
+        return const Color(0xFFF59E0B);
+      case ActivityType.shopPurchased:
+        return const Color(0xFFD946EF);
+      case ActivityType.privateConsult:
+        return const Color(0xFF6C4AB6);
+    }
+  }
+}
+
+class ActivityEntry {
+  final ActivityType type;
+  final String title;
+  final String subtitle;
+  final String? amount;
+  final String? relatedAvatarSeed;
+  final DateTime at;
+
+  const ActivityEntry({
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    this.amount,
+    this.relatedAvatarSeed,
+    required this.at,
   });
 }
 

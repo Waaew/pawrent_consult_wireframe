@@ -6,21 +6,30 @@ import '../theme/app_theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/live_atoms.dart';
 import '../widgets/question_card.dart';
+import 'home_screen.dart' show openNotificationsSheet;
 import 'question_chat_screen.dart';
 import 'post_question_screen.dart';
+// currentUser role drives vet-specific gating
 
 enum _Sort { latest, trending, follows }
 
-enum _Species {
-  all('All', '🐾'),
-  dog('Dog', '🐶'),
-  cat('Cat', '🐱'),
-  rabbit('Rabbit', '🐰');
-
+class _SpeciesOpt {
   final String label;
   final String emoji;
-  const _Species(this.label, this.emoji);
+  final String? filterValue; // null = All
+  const _SpeciesOpt(this.label, this.emoji, this.filterValue);
 }
+
+const _speciesOptions = <_SpeciesOpt>[
+  _SpeciesOpt('ทุกสายพันธุ์', '🐾', null),
+  _SpeciesOpt('Dog', '🐶', 'dog'),
+  _SpeciesOpt('Cat', '🐱', 'cat'),
+  _SpeciesOpt('Rabbit', '🐰', 'rabbit'),
+  _SpeciesOpt('Bird', '🦜', 'bird'),
+  _SpeciesOpt('Fish', '🐠', 'fish'),
+  _SpeciesOpt('Reptile', '🦎', 'reptile'),
+  _SpeciesOpt('Other', '🐾', 'other'),
+];
 
 const _liveReplyingByQuestion = <String, Author>{
   'q2': Author(
@@ -65,7 +74,7 @@ class ConsultBoardScreen extends StatefulWidget {
 
 class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
   _Sort _sort = _Sort.latest;
-  _Species _species = _Species.all;
+  _SpeciesOpt _species = _speciesOptions.first;
   final _searchCtrl = TextEditingController();
 
   int _tickerIndex = 0;
@@ -89,10 +98,11 @@ class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
 
   List<Question> get _filtered {
     var list = mockQuestions.toList();
-    if (_species != _Species.all) {
+    if (_species.filterValue != null) {
+      final target = _species.filterValue;
       list = list.where((q) {
         final s = q.pet?.species.toLowerCase();
-        return s == _species.label.toLowerCase();
+        return s == target;
       }).toList();
     }
     if (_searchCtrl.text.trim().isNotEmpty) {
@@ -153,13 +163,14 @@ class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
                     child: const Icon(Icons.pets, color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  const Text('Consult'),
+                  const Text('Second Opinion'),
                 ],
               ),
               actions: [
                 IconButton(
                   tooltip: 'Notifications',
-                  onPressed: () {},
+                  onPressed: () =>
+                      openNotificationsSheet(context, currentUser),
                   icon: Stack(
                     clipBehavior: Clip.none,
                     children: const [
@@ -188,12 +199,16 @@ class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ask vets anything',
+                      currentUser.role == AuthorRole.vet
+                          ? 'คำถามรอคำตอบจาก Expert'
+                          : 'ขอ Second Opinion จากสัตวแพทย์จริง',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Verified vets answer most questions within 30 minutes.',
+                      currentUser.role == AuthorRole.vet
+                          ? 'ตอบก่อน = มีสิทธิ์รับเคสและสะสม CEO Score'
+                          : 'Expert verified ตอบเฉลี่ย ~3 นาที',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -218,27 +233,14 @@ class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  0,
+                  AppSpacing.lg,
                   AppSpacing.sm,
-                  0,
+                  AppSpacing.lg,
                   AppSpacing.xs,
                 ),
-                child: SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                    children: [
-                      for (final s in _Species.values) ...[
-                        _SpeciesPill(
-                          species: s,
-                          selected: _species == s,
-                          onTap: () => setState(() => _species = s),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                      ],
-                    ],
-                  ),
+                child: _SpeciesDropdown(
+                  value: _species,
+                  onChanged: (opt) => setState(() => _species = opt),
                 ),
               ),
             ),
@@ -318,13 +320,15 @@ class _ConsultBoardScreenState extends State<ConsultBoardScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openPost,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('Ask'),
-      ),
+      floatingActionButton: currentUser.role == AuthorRole.vet
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _openPost,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Ask'),
+            ),
     );
   }
 
@@ -364,16 +368,91 @@ class _SortTab extends StatelessWidget {
   }
 }
 
-class _SpeciesPill extends StatelessWidget {
-  final _Species species;
-  final bool selected;
-  final VoidCallback onTap;
+class _SpeciesDropdown extends StatelessWidget {
+  final _SpeciesOpt value;
+  final ValueChanged<_SpeciesOpt> onChanged;
 
-  const _SpeciesPill({
-    required this.species,
-    required this.selected,
-    required this.onTap,
-  });
+  const _SpeciesDropdown({required this.value, required this.onChanged});
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<_SpeciesOpt>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Text(
+                'กรองตามสายพันธุ์',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ..._speciesOptions.map((o) {
+                final selected = o.filterValue == value.filterValue;
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).pop(o),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          Text(o.emoji,
+                              style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              o.label,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: selected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (selected)
+                            const Icon(Icons.check,
+                                size: 18, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null) onChanged(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -381,30 +460,35 @@ class _SpeciesPill extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        onTap: () => _open(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.primary : AppColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(species.emoji, style: const TextStyle(fontSize: 15)),
+              const Icon(Icons.filter_list,
+                  size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Text(value.emoji, style: const TextStyle(fontSize: 15)),
               const SizedBox(width: 6),
-              Text(
-                species.label,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.textSecondary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+              Expanded(
+                child: Text(
+                  value.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
+              const Icon(Icons.expand_more,
+                  size: 18, color: AppColors.textSecondary),
             ],
           ),
         ),

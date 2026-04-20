@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../data/mock_data.dart';
 import '../models/consult_models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/live_atoms.dart';
 import 'photo_viewer_screen.dart';
+import 'private_consult_session_screen.dart';
 import 'profile_screen.dart';
 import 'vet_answer_screen.dart';
 
@@ -627,39 +629,7 @@ class _QuestionBubble extends StatelessWidget {
           ],
           if (q.pet != null) ...[
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: fromMe ? Colors.white.withValues(alpha: 0.18) : AppColors.background,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Row(
-                children: [
-                  SeededAvatar(seed: q.pet!.avatarSeed, size: 28),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          q.pet!.name,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          '${q.pet!.species} · ${q.pet!.breed} · ${q.pet!.ageMonths} mo',
-                          style: TextStyle(color: subColor, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _PatientVitalsCard(pet: q.pet!, fromMe: fromMe),
           ],
           const SizedBox(height: 8),
           Row(
@@ -889,7 +859,7 @@ class _AnswerBubble extends StatelessWidget {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () => _openTelemetBooking(context, a.author),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.warning,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
@@ -907,7 +877,7 @@ class _AnswerBubble extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => _openShopSheet(context, a),
                       icon: const Icon(Icons.shopping_bag_outlined, size: 16),
                       label: Text(a.brandCta!, style: const TextStyle(fontSize: 13)),
                       style: OutlinedButton.styleFrom(
@@ -915,6 +885,35 @@ class _AnswerBubble extends StatelessWidget {
                         side: const BorderSide(color: AppColors.brandBadge),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         minimumSize: const Size(0, 32),
+                      ),
+                    ),
+                  ),
+                ],
+                if (isVet && !streaming) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PrivateConsultSessionScreen(
+                            expert: a.author,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.lock_outline, size: 15),
+                      label: const Text(
+                        'ขอ Private Consult กับหมอคนนี้ · ฿500/30 นาที',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        minimumSize: const Size(0, 36),
                       ),
                     ),
                   ),
@@ -1442,6 +1441,840 @@ class _ChatComposer extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Patient vitals card (prominent for diagnosis)
+// ─────────────────────────────────────────────────────────────
+
+class _PatientVitalsCard extends StatelessWidget {
+  final Pet pet;
+  final bool fromMe;
+  const _PatientVitalsCard({required this.pet, required this.fromMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final headerColor = fromMe ? Colors.white : AppColors.textPrimary;
+    final labelColor = fromMe ? Colors.white70 : AppColors.textSecondary;
+    final valueColor = fromMe ? Colors.white : AppColors.textPrimary;
+    final bg = fromMe
+        ? Colors.white.withValues(alpha: 0.16)
+        : AppColors.background;
+    final border = fromMe
+        ? Colors.white.withValues(alpha: 0.28)
+        : AppColors.vetBadge.withValues(alpha: 0.22);
+
+    final sexLabel = pet.sex == null
+        ? '—'
+        : pet.sex == 'male'
+            ? 'เพศผู้${pet.neutered ? ' (ทำหมัน)' : ''}'
+            : pet.sex == 'female'
+                ? 'เพศเมีย${pet.neutered ? ' (ทำหมัน)' : ''}'
+                : 'ไม่ระบุ';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SeededAvatar(seed: pet.avatarSeed, size: 32),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      pet.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: headerColor,
+                      ),
+                    ),
+                    Text(
+                      'PATIENT INFO · สำหรับการวินิจฉัย',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: labelColor,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _VitalCell(
+                  icon: Icons.pets,
+                  label: 'สายพันธุ์',
+                  value: pet.breed,
+                  labelColor: labelColor,
+                  valueColor: valueColor,
+                ),
+              ),
+              Expanded(
+                child: _VitalCell(
+                  icon: Icons.cake_outlined,
+                  label: 'อายุ',
+                  value: _ageLabel(pet.ageMonths),
+                  labelColor: labelColor,
+                  valueColor: valueColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _VitalCell(
+                  icon: Icons.monitor_weight_outlined,
+                  label: 'น้ำหนัก',
+                  value: pet.weightKg != null
+                      ? '${pet.weightKg!.toStringAsFixed(1)} kg'
+                      : '—',
+                  labelColor: labelColor,
+                  valueColor: valueColor,
+                ),
+              ),
+              Expanded(
+                child: _VitalCell(
+                  icon: Icons.wc_outlined,
+                  label: 'เพศ',
+                  value: sexLabel,
+                  labelColor: labelColor,
+                  valueColor: valueColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _ageLabel(int months) {
+    if (months < 12) return '$months เดือน';
+    final years = months ~/ 12;
+    final rem = months % 12;
+    if (rem == 0) return '$years ปี';
+    return '$years ปี $rem เดือน';
+  }
+}
+
+class _VitalCell extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color labelColor;
+  final Color valueColor;
+  const _VitalCell({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.labelColor,
+    required this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 13, color: labelColor),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: labelColor,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: valueColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Telemet booking flow
+// ─────────────────────────────────────────────────────────────
+
+Future<void> _openTelemetBooking(BuildContext context, Author vet) async {
+  final booked = await showModalBottomSheet<_TelemetSlot>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+    ),
+    builder: (_) => _TelemetBookingSheet(vet: vet),
+  );
+  if (booked != null && context.mounted) {
+    logActivity(ActivityEntry(
+      type: ActivityType.telemetBooked,
+      title: 'จอง Telemet · ${vet.name}',
+      subtitle: '${booked.dateLabel} · ${booked.time} · 30 นาที',
+      amount: '฿500',
+      relatedAvatarSeed: vet.avatarSeed,
+      at: DateTime.now(),
+    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          '✓ จองแล้ว · ${vet.name} · ${booked.dateLabel} · ${booked.time}',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+class _TelemetSlot {
+  final String dateLabel;
+  final String time;
+  const _TelemetSlot(this.dateLabel, this.time);
+}
+
+class _TelemetBookingSheet extends StatefulWidget {
+  final Author vet;
+  const _TelemetBookingSheet({required this.vet});
+
+  @override
+  State<_TelemetBookingSheet> createState() => _TelemetBookingSheetState();
+}
+
+class _TelemetBookingSheetState extends State<_TelemetBookingSheet> {
+  int _dateIdx = 0;
+  String? _time;
+
+  List<DateTime> get _dates => List.generate(
+        5,
+        (i) => DateTime.now().add(Duration(days: i)),
+      );
+
+  static const _slots = ['09:00', '10:30', '13:00', '15:00', '18:30'];
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = DateFormat('EEE d MMM').format(_dates[_dateIdx]);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Icon(Icons.videocam_outlined,
+                    color: AppColors.warning, size: 22),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'จอง Telemet · Video Consult',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: const Text(
+                    '฿500 / 30 นาที',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'กับ ${widget.vet.name}${widget.vet.clinic != null ? ' · ${widget.vet.clinic}' : ''}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'เลือกวัน',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 68,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _dates.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final d = _dates[i];
+                  final selected = _dateIdx == i;
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      onTap: () => setState(() => _dateIdx = i),
+                      child: Container(
+                        width: 64,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.surface,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE').format(d),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: selected
+                                    ? Colors.white70
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              DateFormat('d MMM').format(d),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: selected
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'เลือกเวลา',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _slots.map((t) {
+                final selected = _time == t;
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    onTap: () => setState(() => _time = t),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.surface,
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.pill),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Text(
+                        t,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: selected
+                              ? Colors.white
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _time == null
+                    ? null
+                    : () => Navigator.of(context).pop(
+                          _TelemetSlot(dateLabel, _time!),
+                        ),
+                icon: const Icon(Icons.videocam_outlined, size: 18),
+                label: Text(
+                  _time == null
+                      ? 'เลือกเวลาก่อน'
+                      : 'ยืนยันจอง · $dateLabel · $_time',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _time == null
+                      ? AppColors.border
+                      : AppColors.warning,
+                  foregroundColor: _time == null
+                      ? AppColors.textSecondary
+                      : Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Center(
+              child: Text(
+                'ตัดเงินเมื่อยืนยัน · ยกเลิกก่อนเวลา ≥1 ชม. คืนเต็ม',
+                style: TextStyle(
+                    fontSize: 10, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shop product flow (sponsored brand CTA)
+// ─────────────────────────────────────────────────────────────
+
+class _ShopOrder {
+  final int qty;
+  final String size;
+  final int total;
+  final bool buyNow;
+  const _ShopOrder(this.qty, this.size, this.total, this.buyNow);
+}
+
+Future<void> _openShopSheet(BuildContext context, Answer answer) async {
+  final order = await showModalBottomSheet<_ShopOrder>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+    ),
+    builder: (_) => _ShopProductSheet(answer: answer),
+  );
+  if (order != null && context.mounted) {
+    logActivity(ActivityEntry(
+      type: ActivityType.shopPurchased,
+      title: '${answer.brandCta} · ${order.size}',
+      subtitle: order.buyNow
+          ? 'จำนวน ${order.qty} · กำลังจัดส่ง'
+          : 'จำนวน ${order.qty} · อยู่ในตะกร้า',
+      amount: '฿${order.total}',
+      relatedAvatarSeed: answer.author.avatarSeed,
+      at: DateTime.now(),
+    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.brandBadge,
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          order.buyNow
+              ? '✓ สั่งซื้อแล้ว · ${answer.brandCta} × ${order.qty}'
+              : '✓ เพิ่มลงตะกร้า · ${answer.brandCta} × ${order.qty}',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShopProductSheet extends StatefulWidget {
+  final Answer answer;
+  const _ShopProductSheet({required this.answer});
+
+  @override
+  State<_ShopProductSheet> createState() => _ShopProductSheetState();
+}
+
+class _ShopProductSheetState extends State<_ShopProductSheet> {
+  int _qty = 1;
+  String _size = '3 kg';
+  static const _sizes = ['1 kg', '3 kg', '10 kg'];
+  static const _priceBySize = {'1 kg': 480, '3 kg': 1290, '10 kg': 3890};
+
+  @override
+  Widget build(BuildContext context) {
+    final price = _priceBySize[_size]!;
+    final total = price * _qty;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.brandBadge.withValues(alpha: 0.2),
+                        AppColors.accent.withValues(alpha: 0.25),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.pets,
+                      color: Colors.white, size: 32),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandBadge
+                              .withValues(alpha: 0.12),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: const Text(
+                          'SPONSORED',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.brandBadge,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.answer.brandCta ?? 'Product',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'by ${widget.answer.author.name}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'ขนาด',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: _sizes.map((s) {
+                final selected = _size == s;
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    onTap: () => setState(() => _size = s),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.brandBadge
+                            : AppColors.surface,
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.brandBadge
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            s,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '฿${_priceBySize[s]}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: selected
+                                  ? Colors.white70
+                                  : AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Text(
+                  'จำนวน',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const Spacer(),
+                _QtyButton(
+                  icon: Icons.remove,
+                  onTap: _qty > 1 ? () => setState(() => _qty--) : null,
+                ),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    '$_qty',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                _QtyButton(
+                  icon: Icons.add,
+                  onTap: () => setState(() => _qty++),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                children: [
+                  const Text(
+                    'รวม',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '฿${total.toString()}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.brandBadge,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context)
+                        .pop(_ShopOrder(_qty, _size, total, false)),
+                    icon: const Icon(Icons.shopping_cart_outlined,
+                        size: 16),
+                    label: const Text('เพิ่มตะกร้า'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brandBadge,
+                      side: const BorderSide(color: AppColors.brandBadge),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context)
+                        .pop(_ShopOrder(_qty, _size, total, true)),
+                    icon: const Icon(Icons.flash_on, size: 16),
+                    label: Text(
+                      'ซื้อเลย ฿$total',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandBadge,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _QtyButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        onTap: onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.surface : AppColors.background,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.border),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: 16,
+            color: enabled
+                ? AppColors.textPrimary
+                : AppColors.textSecondary,
+          ),
         ),
       ),
     );

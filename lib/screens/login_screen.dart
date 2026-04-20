@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 4),
                 const Center(
                   child: Text(
-                    'ถามคุณหมอ · ดูแลน้อง · ร่วมชุมชนคนรักสัตว์',
+                    'Second Opinion จากสัตวแพทย์ · ดูแลน้อง · Expert ตัวจริง',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,

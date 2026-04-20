@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Unified palette — keep distinct hues to a minimum.
+///
+/// Brand:    primary (purple) + accent (teal)
+/// States:   success (green) / danger (red) — reserved for semantic signals
+/// Badges:   vetBadge (blue) — external convention for "verified"
+/// Legacy aliases (secondary / warning / brandBadge) all collapse into
+/// brand-family so the UI reads as one coherent system.
 class AppColors {
   static const Color primary = Color(0xFF6C4AB6);
   static const Color primarySoft = Color(0xFFEDE7FA);
-  static const Color secondary = Color(0xFFFFB26B);
   static const Color accent = Color(0xFF34C9B7);
   static const Color background = Color(0xFFFAF8FE);
   static const Color surface = Colors.white;
   static const Color textPrimary = Color(0xFF1A1330);
   static const Color textSecondary = Color(0xFF6B6480);
   static const Color border = Color(0xFFEAE5F5);
+
   static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
   static const Color vetBadge = Color(0xFF2563EB);
-  static const Color brandBadge = Color(0xFFD946EF);
+
+  // Legacy aliases — kept for code compatibility, consolidated visually.
+  static const Color secondary = accent;
+  static const Color warning = primary;
+  static const Color brandBadge = accent;
 }
 
 class AppRadius {

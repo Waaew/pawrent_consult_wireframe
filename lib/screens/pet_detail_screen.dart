@@ -79,7 +79,7 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
               text: 'ยังไม่มีบันทึกสุขภาพ · กด + เพิ่มรายการ',
             )
           else
-            ...logs.map((e) => _HealthLogTile(entry: e)),
+            _HealthLogGrid(entries: logs),
           const SizedBox(height: AppSpacing.lg),
           _SectionHeader('Questions about ${pet.name}'),
           const SizedBox(height: AppSpacing.sm),
@@ -512,110 +512,124 @@ class _HealthLogHeader extends StatelessWidget {
   }
 }
 
-class _HealthLogTile extends StatelessWidget {
-  final HealthLogEntry entry;
-  const _HealthLogTile({required this.entry});
-
-  Color _typeColor(HealthLogType type) {
-    switch (type) {
-      case HealthLogType.weight:
-        return AppColors.primary;
-      case HealthLogType.vaccine:
-        return AppColors.vetBadge;
-      case HealthLogType.grooming:
-        return AppColors.accent;
-      case HealthLogType.checkup:
-        return AppColors.success;
-      case HealthLogType.medication:
-        return AppColors.warning;
-      case HealthLogType.note:
-        return AppColors.textSecondary;
-    }
+Color _logTypeColor(HealthLogType type) {
+  switch (type) {
+    case HealthLogType.weight:
+      return AppColors.primary;
+    case HealthLogType.vaccine:
+      return AppColors.vetBadge;
+    case HealthLogType.grooming:
+      return AppColors.accent;
+    case HealthLogType.checkup:
+      return AppColors.success;
+    case HealthLogType.medication:
+      return AppColors.primary;
+    case HealthLogType.note:
+      return AppColors.textSecondary;
   }
+}
+
+class _HealthLogGrid extends StatelessWidget {
+  final List<HealthLogEntry> entries;
+  const _HealthLogGrid({required this.entries});
 
   @override
   Widget build(BuildContext context) {
-    final color = _typeColor(entry.type);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: entries.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        mainAxisExtent: 96,
+      ),
+      itemBuilder: (_, i) => _HealthLogCompactTile(entry: entries[i]),
+    );
+  }
+}
+
+class _HealthLogCompactTile extends StatelessWidget {
+  final HealthLogEntry entry;
+  const _HealthLogCompactTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _logTypeColor(entry.type);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  entry.type.emoji,
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
-              alignment: Alignment.center,
-              child: Text(entry.type.emoji, style: const TextStyle(fontSize: 16)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text(
-                          entry.type.label.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: color,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        DateFormat('d MMM yyyy').format(entry.loggedAt),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  entry.type.label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    letterSpacing: 0.5,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (entry.note != null && entry.note!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      entry.note!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
+              Text(
+                DateFormat('d MMM').format(entry.loggedAt),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            entry.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              height: 1.2,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            entry.note ?? DateFormat('EEE d MMM yyyy').format(entry.loggedAt),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+              height: 1.3,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -633,6 +647,29 @@ class _AddHealthLogSheetState extends State<_AddHealthLogSheet> {
   HealthLogType _type = HealthLogType.weight;
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  DateTime _loggedAt = DateTime.now();
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _loggedAt,
+      firstDate: DateTime(now.year - 5),
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            surface: AppColors.surface,
+            onSurface: AppColors.textPrimary,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _loggedAt = picked);
+  }
 
   @override
   void dispose() {
@@ -666,7 +703,7 @@ class _AddHealthLogSheetState extends State<_AddHealthLogSheet> {
       petSeed: widget.petSeed,
       title: _titleCtrl.text.trim(),
       note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-      loggedAt: DateTime.now(),
+      loggedAt: _loggedAt,
     );
     Navigator.of(context).pop(entry);
   }
@@ -744,6 +781,44 @@ class _AddHealthLogSheetState extends State<_AddHealthLogSheet> {
                     ),
                   );
                 }).toList(),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const _SheetLabel('วันที่บันทึก'),
+              const SizedBox(height: 6),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  onTap: _pickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            DateFormat('EEE d MMM yyyy').format(_loggedAt),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.expand_more,
+                            color: AppColors.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               const _SheetLabel('Detail'),

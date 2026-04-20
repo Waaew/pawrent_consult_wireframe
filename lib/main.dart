@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'data/mock_data.dart';
+import 'models/consult_models.dart';
 import 'screens/consult_board_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -21,14 +22,22 @@ class _PawrentAppState extends State<PawrentApp> {
   void _login() => setState(() => _authed = true);
   void _logout() => setState(() => _authed = false);
 
+  void _switchAccount(Author user) {
+    setState(() => currentUser = user);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pawrent Consult',
+      title: 'Pawrent Second Opinion',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: _authed
-          ? RootShell(onLogout: _logout)
+          ? RootShell(
+              key: ValueKey(currentUser.avatarSeed),
+              onLogout: _logout,
+              onSwitchAccount: _switchAccount,
+            )
           : LoginScreen(onLogin: _login),
     );
   }
@@ -36,7 +45,12 @@ class _PawrentAppState extends State<PawrentApp> {
 
 class RootShell extends StatefulWidget {
   final VoidCallback onLogout;
-  const RootShell({super.key, required this.onLogout});
+  final ValueChanged<Author> onSwitchAccount;
+  const RootShell({
+    super.key,
+    required this.onLogout,
+    required this.onSwitchAccount,
+  });
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -47,7 +61,7 @@ class _RootShellState extends State<RootShell> {
 
   static const _tabs = [
     ('Home', Icons.home_outlined, Icons.home),
-    ('Consult', Icons.forum_outlined, Icons.forum),
+    ('Second Opinion', Icons.forum_outlined, Icons.forum),
     ('Profile', Icons.person_outline, Icons.person),
   ];
 
@@ -68,6 +82,7 @@ class _RootShellState extends State<RootShell> {
           author: currentUser,
           showBackButton: false,
           onLogout: widget.onLogout,
+          onSwitchAccount: widget.onSwitchAccount,
         );
         break;
       default:

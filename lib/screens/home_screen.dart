@@ -49,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final given = answersByAuthor(me.avatarSeed);
     final accepted = acceptedAnswersByAuthor(me.avatarSeed);
     final followedVets = [vetSomchai, vetPloy, vetMana];
+    final isVet = me.role == AuthorRole.vet;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -87,31 +88,57 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
             ),
             const SizedBox(height: AppSpacing.md),
-            _AskVetHero(onTap: _openAsk),
-            const SizedBox(height: AppSpacing.lg),
-            _SectionHeader(title: 'Your pets', count: myPets.length),
-            const SizedBox(height: AppSpacing.sm),
-            _PetsStrip(pets: myPets, onAddPet: _openAddPet),
-            const SizedBox(height: AppSpacing.lg),
-            _SectionHeader(title: 'Recent questions', count: asked.length),
-            const SizedBox(height: AppSpacing.sm),
-            if (asked.isEmpty)
-              const _EmptyCard(
-                icon: Icons.help_outline,
-                text: 'ยังไม่เคยถามคำถาม · กด Ask vet เพื่อเริ่ม',
-              )
-            else
-              ...asked.take(3).map((q) => _RecentQuestionCard(question: q)),
-            const SizedBox(height: AppSpacing.lg),
-            _SectionHeader(title: 'Verified vets', count: followedVets.length),
-            const SizedBox(height: AppSpacing.sm),
-            _VetList(vets: followedVets),
+            if (isVet) ...[
+              _VetEarningsCard(author: me),
+              const SizedBox(height: AppSpacing.lg),
+              _SectionHeader(
+                title: 'คำขอ Private Consult',
+                count: _mockConsultRequests.length,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ..._mockConsultRequests.map(
+                (r) => _ConsultRequestCard(request: r),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _SectionHeader(
+                title: 'คำถามในห้องที่ควรตอบ',
+                count: _suggestedForVet(me).length,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ..._suggestedForVet(me)
+                  .take(3)
+                  .map((q) => _RecentQuestionCard(question: q)),
+            ] else ...[
+              _AskVetHero(onTap: _openAsk),
+              const SizedBox(height: AppSpacing.lg),
+              _SectionHeader(title: 'Your pets', count: myPets.length),
+              const SizedBox(height: AppSpacing.sm),
+              _PetsStrip(pets: myPets, onAddPet: _openAddPet),
+              const SizedBox(height: AppSpacing.lg),
+              _SectionHeader(title: 'Recent questions', count: asked.length),
+              const SizedBox(height: AppSpacing.sm),
+              if (asked.isEmpty)
+                const _EmptyCard(
+                  icon: Icons.help_outline,
+                  text: 'ยังไม่เคยถามคำถาม · กด Ask เพื่อเริ่ม',
+                )
+              else
+                ...asked.take(3).map((q) => _RecentQuestionCard(question: q)),
+              const SizedBox(height: AppSpacing.lg),
+              _SectionHeader(
+                  title: 'Verified experts', count: followedVets.length),
+              const SizedBox(height: AppSpacing.sm),
+              _VetList(vets: followedVets),
+            ],
           ],
         ),
       ),
     );
   }
 }
+
+List<Question> _suggestedForVet(Author vet) =>
+    mockQuestions.where((q) => !q.hasAcceptedAnswer).toList();
 
 // ─────────────────────────────────────────────────────────────
 // Hero greeting (avatar tappable → Profile tab)
@@ -179,14 +206,72 @@ class _HeroGreeting extends StatelessWidget {
             ],
           ),
         ),
+        _CoinBadge(
+          balance: 320,
+          onTap: () => openCoinSheet(context, author),
+        ),
+        const SizedBox(width: 4),
         IconButton(
           tooltip: 'Notifications',
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () => openNotificationsSheet(context, author),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: const [
+              Icon(Icons.notifications_outlined),
+              Positioned(
+                right: -2,
+                top: -2,
+                child: CircleAvatar(
+                  radius: 4,
+                  backgroundColor: AppColors.danger,
+                ),
+              ),
+            ],
+          ),
           color: AppColors.textSecondary,
           visualDensity: VisualDensity.compact,
         ),
       ],
+    );
+  }
+}
+
+class _CoinBadge extends StatelessWidget {
+  final int balance;
+  final VoidCallback onTap;
+  const _CoinBadge({required this.balance, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🪙', style: TextStyle(fontSize: 13)),
+              const SizedBox(width: 4),
+              Text(
+                '$balance',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -239,7 +324,9 @@ class _DashboardStats extends StatelessWidget {
               'Verified',
               author.verified ? 'Yes' : 'No',
               Icons.verified,
-              author.verified ? AppColors.vetBadge : AppColors.textSecondary,
+              author.verified
+                  ? AppColors.vetBadge
+                  : AppColors.textSecondary,
             ),
           ];
 
@@ -392,7 +479,7 @@ class _AskVetHero extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: const [
                     Text(
-                      'ถามคุณหมอได้เลย',
+                      'ขอ Second Opinion ได้เลย',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -402,7 +489,7 @@ class _AskVetHero extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'คุณหมอ verified ตอบใน ~3 นาที',
+                      'Expert verified ตอบใน ~3 นาที',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1248,6 +1335,851 @@ class _EmptyCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Vet-only: earnings card + paid consult requests
+// ─────────────────────────────────────────────────────────────
+
+class _ConsultRequest {
+  final Author owner;
+  final Pet pet;
+  final String summary;
+  final int price;
+  final DateTime requestedAt;
+  const _ConsultRequest({
+    required this.owner,
+    required this.pet,
+    required this.summary,
+    required this.price,
+    required this.requestedAt,
+  });
+}
+
+final _mockConsultRequests = <_ConsultRequest>[
+  _ConsultRequest(
+    owner: ownerWaew,
+    pet: myPets[0],
+    summary: 'โมจิอ้วกต่อเนื่อง อยากขอ Second Opinion เร่งด่วน',
+    price: 500,
+    requestedAt: DateTime.now().subtract(const Duration(minutes: 8)),
+  ),
+  _ConsultRequest(
+    owner: ownerMint,
+    pet: myPets[1],
+    summary: 'Luna ขนร่วงเป็นหย่อม อยากตรวจเพิ่ม',
+    price: 500,
+    requestedAt: DateTime.now().subtract(const Duration(hours: 1)),
+  ),
+  _ConsultRequest(
+    owner: ownerNick,
+    pet: myPets[0],
+    summary: 'ขอคำแนะนำเรื่องอาหารลูกสุนัข',
+    price: 500,
+    requestedAt: DateTime.now().subtract(const Duration(hours: 4)),
+  ),
+];
+
+class _VetEarningsCard extends StatelessWidget {
+  final Author author;
+  const _VetEarningsCard({required this.author});
+
+  @override
+  Widget build(BuildContext context) {
+    // Mock earnings derived from seed for demo variance
+    final base = author.avatarSeed.codeUnits.fold<int>(0, (a, b) => a + b);
+    final monthTotal = 12500 + (base % 9) * 1500;
+    final pendingPayout = 3500 + (base % 5) * 500;
+    final sessions = 12 + (base % 8);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.accent],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.savings_outlined,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              const Text(
+                'ยอดรายได้เดือนนี้',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  '$sessions sessions',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '฿${_fmtMoney(monthTotal)}',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.schedule,
+                    size: 13, color: Colors.white70),
+                const SizedBox(width: 6),
+                Text(
+                  'รอโอน ฿${_fmtMoney(pendingPayout)} · โอน 25 ${_thaiMonth(DateTime.now().month)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _fmtMoney(int v) {
+    final s = v.toString();
+    final b = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+
+  static String _thaiMonth(int m) {
+    const mm = [
+      'ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+      'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.',
+    ];
+    return mm[(m - 1).clamp(0, 11)];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notifications sheet — events where others interacted with me
+// ─────────────────────────────────────────────────────────────
+
+class _NotifEvent {
+  final String title;
+  final String body;
+  final IconData icon;
+  final Color color;
+  final String avatarSeed;
+  final DateTime at;
+  const _NotifEvent({
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.color,
+    required this.avatarSeed,
+    required this.at,
+  });
+}
+
+List<_NotifEvent> _notificationsFor(Author me) {
+  if (me.role == AuthorRole.vet) {
+    return [
+      _NotifEvent(
+        title: 'ลูกค้าใหม่ขอ Private Consult',
+        body: '${ownerWaew.name} · เรื่องโมจิอ้วก · ฿500',
+        icon: Icons.lock_outline,
+        color: AppColors.primary,
+        avatarSeed: ownerWaew.avatarSeed,
+        at: DateTime.now().subtract(const Duration(minutes: 8)),
+      ),
+      _NotifEvent(
+        title: 'คำตอบของคุณถูก Accept',
+        body: '${ownerWaew.name} accept "อ้วก 3 ครั้ง…" · +50 coin',
+        icon: Icons.check_circle,
+        color: AppColors.success,
+        avatarSeed: ownerWaew.avatarSeed,
+        at: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      _NotifEvent(
+        title: '12 คน upvote คำตอบของคุณ',
+        body: '"เลียขนเยอะ…" · trending ในหมวด Behavior',
+        icon: Icons.thumb_up_alt_outlined,
+        color: AppColors.vetBadge,
+        avatarSeed: ownerMint.avatarSeed,
+        at: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+      _NotifEvent(
+        title: 'Telemet booking ใหม่',
+        body: '${ownerNick.name} · Thu 24 เม.ย. 10:30',
+        icon: Icons.videocam_outlined,
+        color: AppColors.primary,
+        avatarSeed: ownerNick.avatarSeed,
+        at: DateTime.now().subtract(const Duration(hours: 6)),
+      ),
+    ];
+  }
+  return [
+    _NotifEvent(
+      title: '${vetSomchai.name} ตอบคำถามของคุณ',
+      body: '"โมจิอ้วก 3 ครั้ง…" · กดดูคำตอบ',
+      icon: Icons.reply,
+      color: AppColors.primary,
+      avatarSeed: vetSomchai.avatarSeed,
+      at: DateTime.now().subtract(const Duration(minutes: 12)),
+    ),
+    _NotifEvent(
+      title: '${vetPloy.name} กำลังพิมพ์คำตอบ',
+      body: 'ในคำถาม "เลียขนเยอะ…"',
+      icon: Icons.edit_note,
+      color: AppColors.vetBadge,
+      avatarSeed: vetPloy.avatarSeed,
+      at: DateTime.now().subtract(const Duration(minutes: 32)),
+    ),
+    _NotifEvent(
+      title: '3 คน upvote คำถามของคุณ',
+      body: '"โมจิอ้วก 3 ครั้ง…" · trending ในหมวด Health',
+      icon: Icons.thumb_up_alt_outlined,
+      color: AppColors.success,
+      avatarSeed: ownerMint.avatarSeed,
+      at: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    _NotifEvent(
+      title: 'Royal Canin ตอบเสริมคำถามของคุณ',
+      body: 'แนะนำ Maxi Puppy · Sponsored',
+      icon: Icons.workspace_premium,
+      color: AppColors.accent,
+      avatarSeed: brandRoyalCanin.avatarSeed,
+      at: DateTime.now().subtract(const Duration(hours: 5)),
+    ),
+  ];
+}
+
+Future<void> openNotificationsSheet(
+    BuildContext context, Author me) async {
+  final events = _notificationsFor(me);
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+    ),
+    builder: (_) => SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Icon(Icons.notifications_outlined,
+                    color: AppColors.primary),
+                const SizedBox(width: 6),
+                const Text(
+                  'Notifications',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('อ่านทั้งหมด'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ...events.map((e) => _NotifTile(event: e)),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _NotifTile extends StatelessWidget {
+  final _NotifEvent event;
+  const _NotifTile({required this.event});
+
+  String _rel(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 1) return 'now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    return '${d.inDays}d';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SeededAvatar(seed: event.avatarSeed, size: 36),
+                Positioned(
+                  right: -3,
+                  bottom: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: event.color,
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: AppColors.surface, width: 1.5),
+                    ),
+                    child: Icon(event.icon, size: 10, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    event.body,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              _rel(event.at),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Coin sheet — transactions tied to activity sources
+// ─────────────────────────────────────────────────────────────
+
+class _CoinTx {
+  final String title;
+  final String source;
+  final int delta; // + earn, − spend
+  final IconData icon;
+  final DateTime at;
+  const _CoinTx({
+    required this.title,
+    required this.source,
+    required this.delta,
+    required this.icon,
+    required this.at,
+  });
+}
+
+List<_CoinTx> _coinTxFor(Author me) {
+  if (me.role == AuthorRole.vet) {
+    return [
+      _CoinTx(
+        title: '+฿500',
+        source: 'Private Consult · ${ownerWaew.name}',
+        delta: 500,
+        icon: Icons.lock_outline,
+        at: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      _CoinTx(
+        title: '+฿500',
+        source: 'Telemet booking · ${ownerNick.name}',
+        delta: 500,
+        icon: Icons.videocam_outlined,
+        at: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      _CoinTx(
+        title: '+฿50',
+        source: 'Accepted answer bonus',
+        delta: 50,
+        icon: Icons.check_circle,
+        at: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      _CoinTx(
+        title: '−฿250',
+        source: 'Platform fee (5%)',
+        delta: -250,
+        icon: Icons.percent,
+        at: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+    ];
+  }
+  return [
+    _CoinTx(
+      title: '+50 coins',
+      source: 'Accept คำตอบของ Dr. Somchai',
+      delta: 50,
+      icon: Icons.check_circle,
+      at: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+    _CoinTx(
+      title: '+20 coins',
+      source: 'ตั้งคำถาม "โมจิอ้วก 3 ครั้ง"',
+      delta: 20,
+      icon: Icons.forum_outlined,
+      at: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    _CoinTx(
+      title: '−500 coins',
+      source: 'Private Consult · Dr. Somchai',
+      delta: -500,
+      icon: Icons.lock_outline,
+      at: DateTime.now().subtract(const Duration(days: 5)),
+    ),
+    _CoinTx(
+      title: '+300 coins',
+      source: 'Weekly bonus · active user',
+      delta: 300,
+      icon: Icons.star_border,
+      at: DateTime.now().subtract(const Duration(days: 7)),
+    ),
+    _CoinTx(
+      title: '+100 coins',
+      source: 'Welcome bonus',
+      delta: 100,
+      icon: Icons.card_giftcard,
+      at: DateTime.now().subtract(const Duration(days: 30)),
+    ),
+  ];
+}
+
+Future<void> openCoinSheet(BuildContext context, Author me) async {
+  final txs = _coinTxFor(me);
+  final balance = txs.fold<int>(0, (a, t) => a + t.delta).abs();
+  final isVet = me.role == AuthorRole.vet;
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+    ),
+    builder: (_) => SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.accent],
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isVet ? 'ยอดสะสม (Withdrawable)' : 'Coin balance',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        isVet ? '฿${_fmt(balance)}' : '$balance 🪙',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.1,
+                        ),
+                      ),
+                      const Spacer(),
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 0),
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          isVet ? 'ถอนเงิน' : 'แลกรางวัล',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Transactions',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...txs.map((t) => _CoinTxTile(tx: t)),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+String _fmt(int v) {
+  final s = v.toString();
+  final b = StringBuffer();
+  for (int i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+    b.write(s[i]);
+  }
+  return b.toString();
+}
+
+class _CoinTxTile extends StatelessWidget {
+  final _CoinTx tx;
+  const _CoinTxTile({required this.tx});
+
+  String _rel(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 60) return '${d.inMinutes}m';
+    if (d.inHours < 24) return '${d.inHours}h';
+    return '${d.inDays}d';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = tx.delta >= 0;
+    final c = positive ? AppColors.success : AppColors.danger;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: c.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Icon(tx.icon, size: 15, color: c),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tx.source,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    _rel(tx.at),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              tx.title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: c,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConsultRequestCard extends StatelessWidget {
+  final _ConsultRequest request;
+  const _ConsultRequestCard({required this.request});
+
+  String _timeAgo(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    return '${d.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border:
+              Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SeededAvatar(seed: request.owner.avatarSeed, size: 36),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.owner.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.pets,
+                              size: 11,
+                              color: AppColors.textSecondary),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              '${request.pet.name} · ${request.pet.species} · ${request.pet.breed}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text(
+                    '฿${request.price}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              request.summary,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.schedule,
+                    size: 11, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Text(
+                  _timeAgo(request.requestedAt),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side:
+                        const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 0),
+                    minimumSize: const Size(0, 30),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child:
+                      const Text('ปฏิเสธ', style: TextStyle(fontSize: 12)),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.success,
+                        behavior: SnackBarBehavior.floating,
+                        content: Text('รับเคส ${request.owner.name} แล้ว'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.check, size: 14),
+                  label: const Text('รับเคส',
+                      style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 0),
+                    minimumSize: const Size(0, 30),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

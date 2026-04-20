@@ -36,7 +36,7 @@ class _PostQuestionScreenState extends State<PostQuestionScreen> {
       _bodyCtrl.text.trim().length >= 20 &&
       _category != null;
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_canSubmit) return;
     final q = Question(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -51,7 +51,19 @@ class _PostQuestionScreenState extends State<PostQuestionScreen> {
       postedAt: DateTime.now(),
       isUrgent: _urgent,
     );
-    Navigator.of(context).pop(q);
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (_) => _PreviewSheet(question: q),
+    );
+    if (confirmed == true && mounted) {
+      Navigator.of(context).pop(q);
+    }
   }
 
   @override
@@ -367,6 +379,219 @@ class _PhotoThumb extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PreviewSheet extends StatelessWidget {
+  final Question question;
+  const _PreviewSheet({required this.question});
+
+  @override
+  Widget build(BuildContext context) {
+    final q = question;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Preview ก่อนโพสต์',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'ตรวจสอบว่าคำถามครบถ้วนก่อนส่งให้ Expert',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: q.category.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(q.category.emoji,
+                                style: const TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
+                            Text(
+                              q.category.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: q.category.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (q.isUrgent) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.danger.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: const Text(
+                            'URGENT',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    q.title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    q.body,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                      height: 1.5,
+                    ),
+                  ),
+                  if (q.pet != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.pets,
+                            size: 13, color: AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${q.pet!.name} · ${q.pet!.species} · ${q.pet!.breed} · ${q.pet!.ageMonths}m',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (q.photos.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '📎 ${q.photos.length} รูปแนบ',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.public,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      'คำถามจะถูกโพสต์แบบ public · Expert ที่เก่งหัวข้อนี้จะถูกแจ้งเตือนก่อน',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('แก้ไข'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text(
+                      'ยืนยันและส่ง',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
